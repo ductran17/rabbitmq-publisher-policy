@@ -13,17 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.template.configuration;
+package io.gravitee.policy.rabbitmqconsumer.configuration;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.gravitee.policy.api.PolicyConfiguration;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
-@NoArgsConstructor
-public class TemplatePolicyConfiguration implements PolicyConfiguration {
+public class RabbitMQConfiguration implements PolicyConfiguration {
 
-    private String errorKey = "failure";
+    @JsonProperty("RabbitMQhost")
+    private String host;
+
+    @JsonProperty("RabbitMQPort")
+    private Integer port;
+
+    @JsonProperty("RabbitMQUsername")
+    private String username;
+
+    @JsonProperty("RabbitMQPassword")
+    private String password;
+
+    @JsonProperty("RabbitMQTimeout")
+    private Integer timeout;
 }

@@ -3,12 +3,42 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "property": {
-            "title": "property",
-            "description": "A property of template policy",
+        "RabbitMQhost": {
+            "title": "RabbitMQ Host",
+            "description": "Enter address of RabbitMQ",
+            "type": "string",
+            "default": "localhost"
+        },
+        "RabbitMQPort": {
+            "title": "RabbitMQ Port",
+            "description": "Enter port of RabbitMQ",
+            "type": "integer",
+            "default": "5672",
+            "minimum": 1,
+            "maximum": 65535,
+            "messages": {
+                "minimum": "Port must be greater than 0",
+                "maximum": "Port must be less than 65536"
+            }
+        },
+        "RabbitMQUsername": {
+            "title": "RabbitMQ Username",
+            "description": "Enter username of RabbitMQ",
             "type": "string",
             "default": ""
+        },
+        "RabbitMQPassword": {
+            "title": "RabbitMQ Password",
+            "description": "Enter password of RabbitMQ",
+            "type": "string",
+            "default": ""
+        },
+        "RabbitMQTimeout": {
+            "title": "RabbitMQ Timeout",
+            "description": "Enter timout of RabbitMQ",
+            "type": "integer",
+            "default": "10000"
         }
     },
-    "required": []
+    "required": ["RabbitMQhost", "RabbitMQPort", "RabbitMQUsername", "RabbitMQPassword", "RabbitMQTimeout"]
 }

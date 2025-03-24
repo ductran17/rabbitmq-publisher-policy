@@ -13,50 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.template.v3;
+package io.gravitee.policy.rabbitmqconsumer.v3;
 
 import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
-import io.gravitee.gateway.api.http.HttpHeaders;
 import io.gravitee.policy.api.PolicyChain;
-import io.gravitee.policy.api.PolicyResult;
 import io.gravitee.policy.api.annotations.OnRequest;
 import io.gravitee.policy.api.annotations.OnResponse;
-import io.gravitee.policy.template.configuration.TemplatePolicyConfiguration;
+import io.gravitee.policy.rabbitmqconsumer.configuration.RabbitMQConfiguration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
-public class TemplatePolicyV3 {
+public class RabbitMQConsumerPolicyV3 {
 
-    public static final String TEMPLATE_POLICY_HEADER = "x-template-policy";
-    public static final String TEMPLATE_POLICY_EXECUTED_HEADER = "x-template-policy-executed";
-    public static final String ERROR_MESSAGE = "Invalid header";
-
-    protected final TemplatePolicyConfiguration configuration;
+    protected final RabbitMQConfiguration configuration;
 
     @OnRequest
     public void onRequest(ExecutionContext executionContext, Request request, PolicyChain chain) {
-        if (shouldInterrupt(request.headers())) {
-            chain.failWith(PolicyResult.failure(HttpStatusCode.BAD_REQUEST_400, ERROR_MESSAGE));
-        }
-        request.headers().add(TEMPLATE_POLICY_EXECUTED_HEADER, "ok");
         chain.doNext(request, executionContext.response());
     }
 
     @OnResponse
     public void onResponse(ExecutionContext executionContext, Response response, PolicyChain chain) {
-        if (shouldInterrupt(response.headers())) {
-            chain.failWith(PolicyResult.failure(HttpStatusCode.INTERNAL_SERVER_ERROR_500, ERROR_MESSAGE));
-        }
-        response.headers().add(TEMPLATE_POLICY_EXECUTED_HEADER, "ok");
         chain.doNext(executionContext.request(), response);
-    }
-
-    protected boolean shouldInterrupt(HttpHeaders headers) {
-        return headers.getAll(TEMPLATE_POLICY_HEADER).stream().anyMatch(header -> header.equalsIgnoreCase(configuration.getErrorKey()));
     }
 }

@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.template.v3;
+package io.gravitee.policy.rabbitmqconsumer.v3;
 
 import io.gravitee.apim.gateway.tests.sdk.annotations.DeployApi;
 import io.gravitee.apim.gateway.tests.sdk.annotations.GatewayTest;
 import io.gravitee.definition.model.ExecutionMode;
-import io.gravitee.policy.template.TemplatePolicyIntegrationTest;
+import io.gravitee.policy.rabbitmqconsumer.TemplatePolicyIntegrationTest;
 
 @GatewayTest(v2ExecutionMode = ExecutionMode.V3)
 @DeployApi({ "/apis/v3/api.json", "/apis/v3/api-response.json" })
-public class TemplatePolicyV3IntegrationTest extends TemplatePolicyIntegrationTest {}
+public class TemplatePolicyV3IntegrationTest extends TemplatePolicyIntegrationTest {
+}
