@@ -63,73 +63,71 @@ public class RabbitMQConsumerPolicy implements Policy {
 
     @Override
     public Completable onResponse(HttpExecutionContext ctx) {
-        return Completable
-            .create(emitter -> {
+        return Single
+            .fromCallable(() -> {
                 String subscriptionId = ctx.getAttribute("subscription-id");
                 if (subscriptionId == null) {
-                    emitter.onError(new IllegalArgumentException("Subscription ID not found in context"));
-                    return;
+                    throw new IllegalArgumentException("Subscription ID not found in context");
                 }
 
-                Connection connection;
-                Channel channel;
+                final Connection connection = factory.newConnection();
+                final Channel channel = connection.createChannel();
+
                 try {
-                    connection = factory.newConnection();
-                    channel = connection.createChannel();
+                    // Try to check if queue exists first
+                    try {
+                        channel.queueDeclarePassive(subscriptionId);
+                    } catch (IOException e) {
+                        // Queue doesn't exist, declare it
+                        channel.queueDeclare(
+                            subscriptionId,
+                            false, // durable
+                            false, // exclusive
+                            true, // autoDelete
+                            Map.of("x-expires", this.timeOut)
+                        );
+                    }
 
-                    // Declare queue (ensures the queue exists)
-                    channel.queueDeclare(
-                        subscriptionId,
-                        false, // durable
-                        false, // exclusive
-                        true, // autoDelete
-                        Map.of("x-expires", this.timeOut)
-                    );
+                    // Consume single message
+                    GetResponse response = channel.basicGet(subscriptionId, true);
+                    if (response == null) {
+                        throw new TimeoutException("No message available in queue");
+                    }
 
-                    // Consume messages and stop after receiving the first one
-                    String consumerTag = channel.basicConsume(
-                        subscriptionId,
-                        true,
-                        (consumerTag1, delivery) -> {
-                            try {
-                                String message = new String(delivery.getBody(), "UTF-8");
-
-                                // Send response
-                                ctx.response().headers().set("Content-Type", "text/plain");
-                                ctx.response().body(Buffer.buffer(message));
-                                ctx.response().end(ctx);
-
-                                // Close connection and complete emitter
-                                channel.close();
-                                connection.close();
-                                emitter.onComplete();
-                            } catch (Exception e) {
-                                emitter.onError(e);
-                            }
-                        },
-                        consumerTag1 -> {}
-                    );
-                } catch (Exception e) {
-                    emitter.onError(e);
+                    return new String(response.getBody(), "UTF-8");
+                } finally {
+                    // Always close resources
+                    closeResources(connection, channel);
                 }
             })
+            .flatMapCompletable(message ->
+                Completable.fromAction(() -> {
+                    ctx.response().headers().set("Content-Type", "text/plain");
+                    ctx.response().body(Buffer.buffer(message));
+                    ctx.response().end(ctx);
+                })
+            )
             .onErrorResumeNext(error ->
                 ctx.interruptWith(
                     new ExecutionFailure(HttpStatusCode.INTERNAL_SERVER_ERROR_500)
-                        .message("RabbitMQ subscription failed: " + error.getMessage())
+                        .message(
+                            "RabbitMQ message retrieval failed: " +
+                            (error.getMessage() != null ? error.getMessage() : "Unknown error")
+                        )
                 )
             );
     }
-    // private void closeResources(Connection connection, Channel channel) {
-    // try {
-    // if (channel != null && channel.isOpen()) {
-    // channel.close();
-    // }
-    // if (connection != null && connection.isOpen()) {
-    // connection.close();
-    // }
-    // } catch (Exception e) {
-    // log.error("Error closing RabbitMQ resources", e);
-    // }
-    // }
+
+    private void closeResources(final Connection connection, final Channel channel) {
+        try {
+            if (channel != null && channel.isOpen()) {
+                channel.close();
+            }
+            if (connection != null && connection.isOpen()) {
+                connection.close();
+            }
+        } catch (Exception e) {
+            log.error("Error closing RabbitMQ resources", e);
+        }
+    }
 }
