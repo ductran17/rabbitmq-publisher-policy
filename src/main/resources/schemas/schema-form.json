@@ -3,7 +3,7 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "RabbitMQhost": {
+        "RabbitMQHost": {
             "title": "RabbitMQ Host",
             "description": "Enter address of RabbitMQ",
             "type": "string",
@@ -40,5 +40,5 @@
             "default": "10000"
         }
     },
-    "required": ["RabbitMQhost", "RabbitMQPort", "RabbitMQUsername", "RabbitMQPassword", "RabbitMQTimeout"]
+    "required": ["RabbitMQHost", "RabbitMQPort", "RabbitMQUsername", "RabbitMQPassword", "RabbitMQTimeout"]
 }

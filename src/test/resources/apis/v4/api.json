@@ -30,12 +30,6 @@
                     "inheritConfiguration": false,
                     "configuration": {
                         "target": "http://localhost:8080/endpoint"
-                    },
-                    "sharedConfigurationOverride": {
-                        "http": {
-                            "connectTimeout": 3000,
-                            "readTimeout": 60000
-                        }
                     }
                 }
             ]
@@ -55,12 +49,16 @@
             ],
             "request": [
                 {
-                    "name": "Template policy",
-                    "description": "Template policy applied on request",
+                    "name": "RabbitMQ Consumer",
+                    "description": "RabbitMQ Consumer policy",
                     "enabled": true,
-                    "policy": "template-policy",
+                    "policy": "rabbitmq-consumer",
                     "configuration": {
-                        "property": "a-property"
+                        "RabbitMQhost": "localhost",
+                        "RabbitMQPort": 5672,
+                        "RabbitMQUsername": "guest",
+                        "RabbitMQPassword": "guest",
+                        "RabbitMQTimeout": 10000
                     }
                 }
             ],

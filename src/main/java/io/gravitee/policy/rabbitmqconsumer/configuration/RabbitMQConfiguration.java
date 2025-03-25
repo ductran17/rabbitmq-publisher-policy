@@ -24,7 +24,7 @@ import lombok.Setter;
 @Setter
 public class RabbitMQConfiguration implements PolicyConfiguration {
 
-    @JsonProperty("RabbitMQhost")
+    @JsonProperty("RabbitMQHost")
     private String host;
 
     @JsonProperty("RabbitMQPort")

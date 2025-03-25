@@ -28,6 +28,7 @@ import io.gravitee.gateway.reactive.api.policy.Policy;
 import io.gravitee.policy.rabbitmqconsumer.configuration.RabbitMQConfiguration;
 import io.reactivex.rxjava3.core.Completable;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class RabbitMQConsumerPolicy implements Policy {
     private final ConnectionFactory factory;
     private Connection connection;
     private Channel channel;
+    private Integer timeOut;
 
     public RabbitMQConsumerPolicy(RabbitMQConfiguration configuration) {
         this.configuration = configuration;
@@ -47,6 +49,11 @@ public class RabbitMQConsumerPolicy implements Policy {
         factory.setPort(configuration.getPort());
         factory.setUsername(configuration.getUsername());
         factory.setPassword(configuration.getPassword());
+        // Add virtual host if needed
+        factory.setVirtualHost("/");
+        // Add connection timeout
+        factory.setConnectionTimeout(5000);
+        this.timeOut = configuration.getTimeout();
     }
 
     @Override
@@ -74,7 +81,13 @@ public class RabbitMQConsumerPolicy implements Policy {
                 connection = factory.newConnection();
                 channel = connection.createChannel();
 
-                channel.queueDeclare(subscriptionId, true, false, false, null);
+                channel.queueDeclare(
+                    subscriptionId,
+                    true, // durable
+                    false, // exclusive
+                    true, // autoDelete
+                    Map.of("x-expires", this.timeOut) // queue expiration in milliseconds
+                );
 
                 CompletableFuture<String> messageFuture = new CompletableFuture<>();
 

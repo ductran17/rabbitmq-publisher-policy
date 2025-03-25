@@ -13,14 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.rabbitmqconsumer.v3;
+package io.gravitee.policy.rabbitmqconsumer;
 
+import io.gravitee.apim.gateway.tests.sdk.AbstractPolicyTest;
 import io.gravitee.apim.gateway.tests.sdk.annotations.DeployApi;
 import io.gravitee.apim.gateway.tests.sdk.annotations.GatewayTest;
-import io.gravitee.definition.model.ExecutionMode;
-import io.gravitee.policy.rabbitmqconsumer.TemplatePolicyIntegrationTest;
+import io.gravitee.definition.model.Api;
+import io.gravitee.plugin.core.api.ConfigurablePlugin;
+import io.gravitee.policy.rabbitmqconsumer.configuration.RabbitMQConfiguration;
+import org.junit.jupiter.api.Test;
 
-@GatewayTest(v2ExecutionMode = ExecutionMode.V3)
-@DeployApi({ "/apis/v3/api.json", "/apis/v3/api-response.json" })
-public class TemplatePolicyV3IntegrationTest extends TemplatePolicyIntegrationTest {
+@GatewayTest
+@DeployApi({ "/apis/v4/api.json", "/apis/v4/api-response.json" })
+public class RabbitMQConsumerPolicyIntegrationTest
+    extends AbstractPolicyTest<RabbitMQConsumerPolicy, RabbitMQConfiguration> {
+
+    @Override
+    public void configureApi(Api api) {
+        // Configure API if needed
+    }
+
+    @Test
+    public void shouldConsumeMessageFromRabbitMQ() {
+        // Add your test implementation
+    }
 }
