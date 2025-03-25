@@ -18,19 +18,18 @@ package io.gravitee.policy.rabbitmqconsumer;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.GetResponse;
 import io.gravitee.common.http.HttpStatusCode;
-// import io.vertx.core.buffer.Buffer;
 import io.gravitee.gateway.api.buffer.Buffer;
 import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
 import io.gravitee.gateway.reactive.api.policy.Policy;
 import io.gravitee.policy.rabbitmqconsumer.configuration.RabbitMQConfiguration;
 import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -38,9 +37,6 @@ public class RabbitMQConsumerPolicy implements Policy {
 
     private final RabbitMQConfiguration configuration;
     private final ConnectionFactory factory;
-    private Connection connection;
-    private Channel channel;
-    private Integer timeOut;
 
     public RabbitMQConsumerPolicy(RabbitMQConfiguration configuration) {
         this.configuration = configuration;
@@ -49,11 +45,8 @@ public class RabbitMQConsumerPolicy implements Policy {
         factory.setPort(configuration.getPort());
         factory.setUsername(configuration.getUsername());
         factory.setPassword(configuration.getPassword());
-        // Add virtual host if needed
         factory.setVirtualHost("/");
-        // Add connection timeout
         factory.setConnectionTimeout(5000);
-        this.timeOut = configuration.getTimeout();
     }
 
     @Override
@@ -68,72 +61,49 @@ public class RabbitMQConsumerPolicy implements Policy {
 
     @Override
     public Completable onResponse(HttpExecutionContext ctx) {
-        return Completable.defer(() -> {
-            try {
+        return Single
+            .fromCallable(() -> {
                 String subscriptionId = ctx.getAttribute("subscription-id");
                 if (subscriptionId == null) {
-                    return ctx.interruptWith(
-                        new ExecutionFailure(HttpStatusCode.BAD_REQUEST_400)
-                            .message("Subscription ID not found in context")
-                    );
+                    throw new IllegalArgumentException("Subscription ID not found in context");
                 }
 
-                connection = factory.newConnection();
-                channel = connection.createChannel();
-
-                channel.queueDeclare(
-                    subscriptionId,
-                    true, // durable
-                    false, // exclusive
-                    true, // autoDelete
-                    Map.of("x-expires", this.timeOut) // queue expiration in milliseconds
-                );
-
-                CompletableFuture<String> messageFuture = new CompletableFuture<>();
-
-                DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-                    String message = new String(delivery.getBody(), "UTF-8");
-                    messageFuture.complete(message);
-                    try {
-                        channel.basicCancel(consumerTag);
-                    } catch (IOException e) {
-                        log.error("Error canceling consumer", e);
-                    }
-                };
-
-                String consumerTag = channel.basicConsume(subscriptionId, true, deliverCallback, tag -> {});
-
-                return Completable
-                    .fromFuture(messageFuture.orTimeout(configuration.getTimeout(), TimeUnit.SECONDS))
-                    .andThen(
-                        Completable.fromAction(() -> {
-                            String message = messageFuture.get();
-                            ctx.response().body(Buffer.buffer(message));
-
-                            cleanupResources();
-                        })
+                try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
+                    channel.queueDeclare(
+                        subscriptionId,
+                        true, // durable
+                        false, // exclusive
+                        true, // autoDelete
+                        Map.of("x-expires", configuration.getTimeout()) // queue expiration
                     );
-            } catch (Exception e) {
-                log.error("Error connecting to RabbitMQ", e);
-                cleanupResources();
-                return ctx.interruptWith(
-                    new ExecutionFailure(HttpStatusCode.INTERNAL_SERVER_ERROR_500)
-                        .message("Failed to connect to RabbitMQ: " + e.getMessage())
-                );
-            }
-        });
+
+                    // Use a blocking receive with a timeout
+                    return receiveMessageWithTimeout(channel, subscriptionId);
+                } catch (IOException | TimeoutException e) {
+                    log.error("Error connecting to RabbitMQ", e);
+                    throw new RuntimeException("Failed to connect to RabbitMQ", e);
+                }
+            })
+            .flatMapCompletable(message ->
+                Completable.fromAction(() -> {
+                    ctx.response().body(Buffer.buffer(message));
+                })
+            )
+            .onErrorResumeNext(error -> {
+                // Convert the error to an ExecutionFailure and then to a CompletableError
+                ExecutionFailure failure = new ExecutionFailure(HttpStatusCode.INTERNAL_SERVER_ERROR_500)
+                    .message("RabbitMQ message retrieval failed: " + error.getMessage());
+                return Completable.error(new RuntimeException(failure.toString()));
+            });
     }
 
-    private void cleanupResources() {
-        try {
-            if (channel != null && channel.isOpen()) {
-                channel.close();
-            }
-            if (connection != null && connection.isOpen()) {
-                connection.close();
-            }
-        } catch (Exception e) {
-            log.error("Error closing RabbitMQ resources", e);
+    private String receiveMessageWithTimeout(Channel channel, String queueName) throws IOException, TimeoutException {
+        GetResponse response = channel.basicGet(queueName, true);
+
+        if (response == null) {
+            throw new TimeoutException("No message received within timeout");
         }
+
+        return new String(response.getBody(), "UTF-8");
     }
 }
