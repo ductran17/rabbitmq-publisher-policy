@@ -37,6 +37,7 @@ public class RabbitMQConsumerPolicy implements Policy {
 
     private final RabbitMQConfiguration configuration;
     private final ConnectionFactory factory;
+    private Integer timeOut;
 
     public RabbitMQConsumerPolicy(RabbitMQConfiguration configuration) {
         this.configuration = configuration;
@@ -47,6 +48,7 @@ public class RabbitMQConsumerPolicy implements Policy {
         factory.setPassword(configuration.getPassword());
         factory.setVirtualHost("/");
         factory.setConnectionTimeout(5000);
+        this.timeOut = configuration.getTimeout();
     }
 
     @Override
@@ -61,49 +63,73 @@ public class RabbitMQConsumerPolicy implements Policy {
 
     @Override
     public Completable onResponse(HttpExecutionContext ctx) {
-        return Single
-            .fromCallable(() -> {
+        return Completable
+            .create(emitter -> {
                 String subscriptionId = ctx.getAttribute("subscription-id");
                 if (subscriptionId == null) {
-                    throw new IllegalArgumentException("Subscription ID not found in context");
+                    emitter.onError(new IllegalArgumentException("Subscription ID not found in context"));
+                    return;
                 }
 
-                try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
+                Connection connection;
+                Channel channel;
+                try {
+                    connection = factory.newConnection();
+                    channel = connection.createChannel();
+
+                    // Declare queue (ensures the queue exists)
                     channel.queueDeclare(
                         subscriptionId,
-                        true, // durable
+                        false, // durable
                         false, // exclusive
                         true, // autoDelete
-                        Map.of("x-expires", configuration.getTimeout()) // queue expiration
+                        Map.of("x-expires", this.timeOut)
                     );
 
-                    // Use a blocking receive with a timeout
-                    return receiveMessageWithTimeout(channel, subscriptionId);
-                } catch (IOException | TimeoutException e) {
-                    log.error("Error connecting to RabbitMQ", e);
-                    throw new RuntimeException("Failed to connect to RabbitMQ", e);
+                    // Consume messages and stop after receiving the first one
+                    String consumerTag = channel.basicConsume(
+                        subscriptionId,
+                        true,
+                        (consumerTag1, delivery) -> {
+                            try {
+                                String message = new String(delivery.getBody(), "UTF-8");
+
+                                // Send response
+                                ctx.response().headers().set("Content-Type", "text/plain");
+                                ctx.response().body(Buffer.buffer(message));
+                                ctx.response().end(ctx);
+
+                                // Close connection and complete emitter
+                                channel.close();
+                                connection.close();
+                                emitter.onComplete();
+                            } catch (Exception e) {
+                                emitter.onError(e);
+                            }
+                        },
+                        consumerTag1 -> {}
+                    );
+                } catch (Exception e) {
+                    emitter.onError(e);
                 }
             })
-            .flatMapCompletable(message ->
-                Completable.fromAction(() -> {
-                    ctx.response().body(Buffer.buffer(message));
-                })
-            )
-            .onErrorResumeNext(error -> {
-                // Convert the error to an ExecutionFailure and then to a CompletableError
-                ExecutionFailure failure = new ExecutionFailure(HttpStatusCode.INTERNAL_SERVER_ERROR_500)
-                    .message("RabbitMQ message retrieval failed: " + error.getMessage());
-                return Completable.error(new RuntimeException(failure.toString()));
-            });
+            .onErrorResumeNext(error ->
+                ctx.interruptWith(
+                    new ExecutionFailure(HttpStatusCode.INTERNAL_SERVER_ERROR_500)
+                        .message("RabbitMQ subscription failed: " + error.getMessage())
+                )
+            );
     }
-
-    private String receiveMessageWithTimeout(Channel channel, String queueName) throws IOException, TimeoutException {
-        GetResponse response = channel.basicGet(queueName, true);
-
-        if (response == null) {
-            throw new TimeoutException("No message received within timeout");
-        }
-
-        return new String(response.getBody(), "UTF-8");
-    }
+    // private void closeResources(Connection connection, Channel channel) {
+    // try {
+    // if (channel != null && channel.isOpen()) {
+    // channel.close();
+    // }
+    // if (connection != null && connection.isOpen()) {
+    // connection.close();
+    // }
+    // } catch (Exception e) {
+    // log.error("Error closing RabbitMQ resources", e);
+    // }
+    // }
 }
