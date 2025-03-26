@@ -38,4 +38,13 @@ public class RabbitMQConfiguration implements PolicyConfiguration {
 
     @JsonProperty("RabbitMQTimeout")
     private Integer timeout;
+
+    @JsonProperty("RabbitMQQueueDurable")
+    private Boolean queueDurable;
+
+    @JsonProperty("RabbitMQQueueExclusive")
+    private Boolean queueExclusive;
+
+    @JsonProperty("RabbitMQQueueAutoDelete")
+    private Boolean queueAutoDelete;
 }

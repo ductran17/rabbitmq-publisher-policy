@@ -1,4 +1,4 @@
-= Gravitee Policy Template
+= RabbitMQ Consumer Policy
 
 == Phases
 
@@ -9,27 +9,15 @@
 ^|onMessageRequest
 ^|onMessageResponse
 
+^.^| 
 ^.^| X
-^.^| X
-^.^| X
-^.^| X
+^.^| 
+^.^| 
 |===
 
 == Description
 
-A policy template to fork and use as a quick starter.
-
-This policy will compare `X-Template-Policy` header value with its configuration `errorKey` field, if both values are equal, then the policy will interrupt the request with a failure execution error.
-
-Implements `TemplatePolicy#onRequest(HttpExecutionContext context)` and `TemplatePolicy#onResponse(HttpExecutionContext context)` to develop your own policy.
-
-NOTE: This policy is designed to work with at least APIM 4.0.0.
-
-=== AM and APIM V2 API compatibility
-
-To develop a policy working with AM or a v2 definition of an API in APIM, please follow link:./src/main/java/io/gravitee/policy/template/v3/TemplatePolicyV3.java[the v3 example implementation of the policy].
-
-
+A policy to work as a RabbitMQ consumer to receive report message from backend system via temparary queue. This is used for long-polling API type that client request the response from backend but the backend may take time to process before sending response back as body content of a new request.
 
 == Configuration
 
@@ -43,40 +31,62 @@ You can configure the policy with the following options:
 ^| Type
 ^| Default
 
-.^|errorKey
+.^|RabbitMQ Host
 ^.^|X
-.^|Policy will fail if header `X-Template-Policy` value is equal to this field.
+.^|Address of RabbitMQ broker
 ^.^|string
-^.^|"failure"
+^.^|"localhost"
+
+.^|RabbitMQ Port
+^.^|X
+.^|Standard AMQP Port of RabbitMQ
+^.^|integer
+^.^|"5672"
+
+.^|RabbitMQ Username
+^.^|X
+.^|Username for RabbitMQ
+^.^|string
+^.^|"user"
+
+.^|RabbitMQ Password
+^.^|X
+.^|Password for RabbitMQ
+^.^|string
+^.^|"password"
+
+.^|RabbitMQ Timeout
+^.^|X
+.^|Queue inactivity TTL (Delete this queue if it hasn’t been used for a given amount of time)
+^.^|integer
+^.^|"100000"
+
+.^|RabbitMQ Queue Durable
+^.^|X
+.^|(Recommend to keep default setting) Metadata of a durable queue is stored on disk, while metadata of a transient (not durable) queue is stored in memory when possible
+^.^|boolean
+^.^|"false"
+
+.^|RabbitMQ Queue Exclusive
+^.^|X
+.^|(Recommend to keep default setting) An exclusive queue can only be used (consumed from, purged, deleted, etc) by its declaring connection
+^.^|boolean
+^.^|"false"
+
+.^|RabbitMQ Queue Auto Delete
+^.^|X
+.^|(Recommend to keep default setting) An auto-delete queue will be deleted when its last consumer is cancelled
+^.^|boolean
+^.^|"true"
 
 |===
-
-Example configuration:
-
-[source, json]
-----
-{
-    "configuration": {
-        "errorKey": "value-to-fail-the-policy"
-    }
-}
-----
 
 == Errors
 
-With the provided default implementation, policy will fail if header `X-Template-Policy` value is equal to configured `errorKey` value.
-
 |===
-|Phase | Code | Error template key | Description
+|Code | Message
 
-.^| REQUEST
-.^| ```400 - BAD REQUEST```
-.^| POLICY_TEMPLATE_ERROR_KEY
-.^| An error occurs during request
-
-.^| RESPONSE
 .^| ```500 - INTERNAL SERVER ERROR```
-.^| POLICY_TEMPLATE_ERROR_KEY
 .^| An error occurs during response
 
 |===

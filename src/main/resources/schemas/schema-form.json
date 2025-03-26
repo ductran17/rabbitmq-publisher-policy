@@ -37,7 +37,25 @@
             "title": "RabbitMQ Timeout",
             "description": "Enter timout of RabbitMQ",
             "type": "integer",
-            "default": "10000"
+            "default": "100000"
+        },
+        "RabbitMQQueueDurable": {
+            "title": "RabbitMQ Queue Durable",
+            "description": "Metadata of a durable queue is stored on disk, while metadata of a transient (not durable) queue is stored in memory when possible",
+            "type": "boolean",
+            "default": false
+        },
+        "RabbitMQQueueExclusive": {
+            "title": "RabbitMQ Queue Exclusive",
+            "description": "An exclusive queue can only be used (consumed from, purged, deleted, etc) by its declaring connection",
+            "type": "boolean",
+            "default": false
+        },
+        "RabbitMQQueueAutoDelete": {
+            "title": "RabbitMQ Queue Auto Delete",
+            "description": "An auto-delete queue will be deleted when its last consumer is cancelled",
+            "type": "boolean",
+            "default": true
         }
     },
     "required": ["RabbitMQHost", "RabbitMQPort", "RabbitMQUsername", "RabbitMQPassword", "RabbitMQTimeout"]

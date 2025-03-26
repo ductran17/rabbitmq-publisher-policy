@@ -18,18 +18,15 @@ package io.gravitee.policy.rabbitmqconsumer;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.GetResponse;
-import io.gravitee.common.http.HttpStatusCode;
 import io.gravitee.gateway.api.buffer.Buffer;
-import io.gravitee.gateway.reactive.api.ExecutionFailure;
 import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
 import io.gravitee.gateway.reactive.api.policy.Policy;
 import io.gravitee.policy.rabbitmqconsumer.configuration.RabbitMQConfiguration;
 import io.reactivex.rxjava3.core.Completable;
-import io.reactivex.rxjava3.core.Single;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -38,6 +35,7 @@ public class RabbitMQConsumerPolicy implements Policy {
     private final RabbitMQConfiguration configuration;
     private final ConnectionFactory factory;
     private Integer timeOut;
+    Map<String, Boolean> queueConfig = new HashMap<>();
 
     public RabbitMQConsumerPolicy(RabbitMQConfiguration configuration) {
         this.configuration = configuration;
@@ -49,6 +47,15 @@ public class RabbitMQConsumerPolicy implements Policy {
         factory.setVirtualHost("/");
         factory.setConnectionTimeout(5000);
         this.timeOut = configuration.getTimeout();
+        this.queueConfig =
+            Map.of(
+                "durable",
+                configuration.getQueueDurable(),
+                "exclusive",
+                configuration.getQueueExclusive(),
+                "autoDelete",
+                configuration.getQueueAutoDelete()
+            );
     }
 
     @Override
@@ -63,71 +70,55 @@ public class RabbitMQConsumerPolicy implements Policy {
 
     @Override
     public Completable onResponse(HttpExecutionContext ctx) {
-        return Single
-            .fromCallable(() -> {
-                String subscriptionId = ctx.getAttribute("subscription-id");
-                if (subscriptionId == null) {
-                    throw new IllegalArgumentException("Subscription ID not found in context");
-                }
+        return Completable.create(emitter -> {
+            String subscriptionId = ctx.getAttribute("subscription-id");
+            if (subscriptionId == null) {
+                emitter.onError(new IllegalArgumentException("Subscription ID not found in context"));
+                return;
+            }
 
-                final Connection connection = factory.newConnection();
-                final Channel channel = connection.createChannel();
+            try {
+                Connection connection = factory.newConnection();
+                Channel channel = connection.createChannel();
 
                 try {
-                    // Try to check if queue exists first
-                    try {
-                        channel.queueDeclarePassive(subscriptionId);
-                    } catch (IOException e) {
-                        // Queue doesn't exist, declare it
-                        channel.queueDeclare(
-                            subscriptionId,
-                            false, // durable
-                            false, // exclusive
-                            true, // autoDelete
-                            Map.of("x-expires", this.timeOut)
-                        );
-                    }
-
-                    // Consume single message
-                    GetResponse response = channel.basicGet(subscriptionId, true);
-                    if (response == null) {
-                        throw new TimeoutException("No message available in queue");
-                    }
-
-                    return new String(response.getBody(), "UTF-8");
-                } finally {
-                    // Always close resources
-                    closeResources(connection, channel);
+                    // Use queueDeclare to make sure queue exist (will create if queue not exist
+                    channel.queueDeclare(
+                        subscriptionId,
+                        queueConfig.get("durable"), // durable
+                        queueConfig.get("exclusive"), // exclusive
+                        queueConfig.get("autoDelete"), // autoDelete
+                        Map.of("x-expires", this.timeOut)
+                    );
+                } catch (IOException e) {
+                    emitter.onError(
+                        new RuntimeException("Queue declaration failed. Possibly due to mismatched parameters.", e)
+                    );
+                    return;
                 }
-            })
-            .flatMapCompletable(message ->
-                Completable.fromAction(() -> {
-                    ctx.response().headers().set("Content-Type", "text/plain");
-                    ctx.response().body(Buffer.buffer(message));
-                    ctx.response().end(ctx);
-                })
-            )
-            .onErrorResumeNext(error ->
-                ctx.interruptWith(
-                    new ExecutionFailure(HttpStatusCode.INTERNAL_SERVER_ERROR_500)
-                        .message(
-                            "RabbitMQ message retrieval failed: " +
-                            (error.getMessage() != null ? error.getMessage() : "Unknown error")
-                        )
-                )
-            );
-    }
 
-    private void closeResources(final Connection connection, final Channel channel) {
-        try {
-            if (channel != null && channel.isOpen()) {
-                channel.close();
+                // Consume messages and stop after receiving the first one
+                channel.basicConsume(
+                    subscriptionId,
+                    true,
+                    (consumerTag, delivery) -> {
+                        try {
+                            String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
+                            ctx.response().headers().set("Content-Type", "text/plain");
+                            ctx.response().body(Buffer.buffer(message));
+                            ctx.response().end(ctx);
+                            channel.close();
+                            connection.close();
+                            emitter.onComplete();
+                        } catch (Exception e) {
+                            emitter.onError(e);
+                        }
+                    },
+                    consumerTag -> {}
+                );
+            } catch (Exception e) {
+                emitter.onError(e);
             }
-            if (connection != null && connection.isOpen()) {
-                connection.close();
-            }
-        } catch (Exception e) {
-            log.error("Error closing RabbitMQ resources", e);
-        }
+        });
     }
 }
