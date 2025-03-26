@@ -3,6 +3,12 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "AttributeQueueID": {
+            "title": "Attribute name used for setting Queue ID",
+            "description": "Enter the attribute name used for setting Queue ID",
+            "type": "string",
+            "default": "subscription-id"
+        },
         "RabbitMQHost": {
             "title": "RabbitMQ Host",
             "description": "Enter address of RabbitMQ",

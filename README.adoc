@@ -31,6 +31,12 @@ You can configure the policy with the following options:
 ^| Type
 ^| Default
 
+.^|AttributeQueueID
+^.^|X
+.^|Attribute name used for setting Queue ID
+^.^|string
+^.^|"subscription-id"
+
 .^|RabbitMQ Host
 ^.^|X
 .^|Address of RabbitMQ broker

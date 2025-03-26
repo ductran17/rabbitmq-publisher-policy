@@ -36,6 +36,7 @@ public class RabbitMQConsumerPolicy implements Policy {
     private final ConnectionFactory factory;
     private Integer timeOut;
     Map<String, Boolean> queueConfig = new HashMap<>();
+    private String attributeQueueID;
 
     public RabbitMQConsumerPolicy(RabbitMQConfiguration configuration) {
         this.configuration = configuration;
@@ -46,6 +47,7 @@ public class RabbitMQConsumerPolicy implements Policy {
         factory.setPassword(configuration.getPassword());
         factory.setVirtualHost("/");
         factory.setConnectionTimeout(5000);
+        this.attributeQueueID = configuration.getAttributeQueueID();
         this.timeOut = configuration.getTimeout();
         this.queueConfig =
             Map.of(
@@ -71,7 +73,7 @@ public class RabbitMQConsumerPolicy implements Policy {
     @Override
     public Completable onResponse(HttpExecutionContext ctx) {
         return Completable.create(emitter -> {
-            String subscriptionId = ctx.getAttribute("subscription-id");
+            String subscriptionId = ctx.getAttribute(this.attributeQueueID);
             if (subscriptionId == null) {
                 emitter.onError(new IllegalArgumentException("Subscription ID not found in context"));
                 return;
