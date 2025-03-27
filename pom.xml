@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.gravitee.policy</groupId>
-    <artifactId>gravitee-policy-rabbitmq-consumer</artifactId>
+    <artifactId>gravitee-policy-rabbitmq-publisher</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 
     <parent>
@@ -39,6 +39,7 @@
         <gravitee-gateway-api.version>3.5.0</gravitee-gateway-api.version>
         <gravitee-policy-api.version>1.11.0</gravitee-policy-api.version>
         <gravitee-apim.version>4.0.2</gravitee-apim.version>
+        <freemarker.version>2.3.31</freemarker.version>
 
         <!-- Gravitee dependencies for APIM / AM >= 4.1.x -->
 <!--        <gravitee-bom.version>6.0.47</gravitee-bom.version>-->
@@ -158,6 +159,18 @@
             <groupId>com.rabbitmq</groupId>
             <artifactId>amqp-client</artifactId>
             <version>5.16.0</version> <!-- Use the latest stable version -->
+        </dependency>
+
+        <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.12.0</version>
+        </dependency>
+
+        <dependency>
+                <groupId>org.freemarker</groupId>
+                <artifactId>freemarker</artifactId>
+                <version>${freemarker.version}</version>
         </dependency>
     </dependencies>
 

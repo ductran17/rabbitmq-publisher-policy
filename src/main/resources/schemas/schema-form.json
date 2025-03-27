@@ -4,10 +4,22 @@
     "additionalProperties": false,
     "properties": {
         "AttributeQueueID": {
-            "title": "Attribute name used for setting Queue ID",
+            "title": "Attribute Queue ID",
             "description": "Enter the attribute name used for setting Queue ID",
             "type": "string",
             "default": "subscription-id"
+        },
+        "CreateQueue": {
+            "title": "Option to create queue with name defined in Attribute Queue ID",
+            "description": "Choose to create this queue or not",
+            "type": "boolean",
+            "default": true
+        },
+        "PublishQueue": {
+            "title": "Option to publish queue with name defined in Attribute Queue ID",
+            "description": "Choose to publish to this queue or not",
+            "type": "boolean",
+            "default": true
         },
         "RabbitMQHost": {
             "title": "RabbitMQ Host",
@@ -43,7 +55,7 @@
             "title": "RabbitMQ Timeout",
             "description": "Enter timout of RabbitMQ",
             "type": "integer",
-            "default": "100000"
+            "default": 100000
         },
         "RabbitMQQueueDurable": {
             "title": "RabbitMQ Queue Durable",
@@ -62,7 +74,51 @@
             "description": "An auto-delete queue will be deleted when its last consumer is cancelled",
             "type": "boolean",
             "default": true
+        },
+        "scope": {
+            "title": "Scope",
+            "description": "Select phase to execute the policy.",
+            "type": "string",
+            "default": "REQUEST",
+            "enum": ["REQUEST", "RESPONSE"],
+            "deprecated": "true"
+        },
+        "body": {
+            "title": "Body content",
+            "type": "string",
+            "format": "gio-code-editor",
+            "x-schema-form": {
+                "type": "codemirror",
+                "codemirrorOptions": {
+                    "placeholder": "Put the body content here",
+                    "lineWrapping": true,
+                    "lineNumbers": true,
+                    "allowDropFileTypes": true,
+                    "autoCloseTags": true,
+                    "mode": "xml"
+                }
+            },
+            "gioConfig": {
+                "banner": {
+                    "title": "Body content",
+                    "text": "The body content to attach to the request or to the response. You can also make use of freemarker templating engine to map an incoming body content to a new one."
+                }
+            }
         }
     },
-    "required": ["RabbitMQHost", "RabbitMQPort", "RabbitMQUsername", "RabbitMQPassword", "RabbitMQTimeout"]
+    "required": [
+        "AttributeQueueID",
+        "CreateQueue",
+        "PublishQueue",
+        "RabbitMQHost",
+        "RabbitMQPort",
+        "RabbitMQUsername",
+        "RabbitMQPassword",
+        "RabbitMQTimeout",
+        "RabbitMQQueueDurable",
+        "RabbitMQQueueExclusive",
+        "RabbitMQQueueAutoDelete",
+        "scope",
+        "body"
+    ]
 }

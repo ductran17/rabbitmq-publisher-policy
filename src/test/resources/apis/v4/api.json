@@ -49,10 +49,10 @@
             ],
             "request": [
                 {
-                    "name": "RabbitMQ Consumer",
-                    "description": "RabbitMQ Consumer policy",
+                    "name": "RabbitMQ Publisher",
+                    "description": "RabbitMQ Publisher policy",
                     "enabled": true,
-                    "policy": "rabbitmq-consumer",
+                    "policy": "rabbitmq-publisher",
                     "configuration": {
                         "RabbitMQhost": "localhost",
                         "RabbitMQPort": 5672,

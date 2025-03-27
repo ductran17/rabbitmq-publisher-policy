@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.rabbitmqconsumer.configuration;
+package io.gravitee.policy.rabbitmqpublisher.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.gravitee.policy.api.PolicyConfiguration;
@@ -25,13 +25,19 @@ import lombok.Setter;
 public class RabbitMQConfiguration implements PolicyConfiguration {
 
     @JsonProperty("AttributeQueueID")
-    private String attributeQueueID;
+    private String attributeQueueID = "subscription-id";
+
+    @JsonProperty("CreateQueue")
+    private Boolean createQueue = true;
+
+    @JsonProperty("ConsumeQueue")
+    private Boolean consumeQueue = true;
 
     @JsonProperty("RabbitMQHost")
-    private String host;
+    private String host = "localhost";
 
     @JsonProperty("RabbitMQPort")
-    private Integer port;
+    private Integer port = 5672;
 
     @JsonProperty("RabbitMQUsername")
     private String username;
@@ -40,14 +46,25 @@ public class RabbitMQConfiguration implements PolicyConfiguration {
     private String password;
 
     @JsonProperty("RabbitMQTimeout")
-    private Integer timeout;
+    private Integer timeout = 100000;
 
     @JsonProperty("RabbitMQQueueDurable")
-    private Boolean queueDurable;
+    private Boolean queueDurable = false;
 
     @JsonProperty("RabbitMQQueueExclusive")
-    private Boolean queueExclusive;
+    private Boolean queueExclusive = false;
 
     @JsonProperty("RabbitMQQueueAutoDelete")
-    private Boolean queueAutoDelete;
+    private Boolean queueAutoDelete = true;
+
+    @JsonProperty("Body")
+    private String body = "{\n" +
+            "  \\\"properties\\\": {},\n" +
+            "  \\\"routing_key\\\": \\\"my_auto_delete_queue\\\",\n" +
+            "  \\\"payload\\\": \\\"OK ban i\\\",\n" +
+            "  \\\"payload_encoding\\\": \\\"string\\\"\n" +
+            "}";
+
+    @JsonProperty("Scope")
+    private String scope = PolicyScope.REQUEST;
 }

@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.policy.rabbitmqconsumer;
+package io.gravitee.policy.rabbitmqpublisher;
 
 import io.gravitee.apim.gateway.tests.sdk.AbstractPolicyTest;
 import io.gravitee.apim.gateway.tests.sdk.annotations.DeployApi;
 import io.gravitee.apim.gateway.tests.sdk.annotations.GatewayTest;
 import io.gravitee.definition.model.Api;
 import io.gravitee.plugin.core.api.ConfigurablePlugin;
-import io.gravitee.policy.rabbitmqconsumer.configuration.RabbitMQConfiguration;
+import io.gravitee.policy.rabbitmqpublisher.RabbitMQPublisherPolicy;
+import io.gravitee.policy.rabbitmqpublisher.configuration.RabbitMQConfiguration;
 import org.junit.jupiter.api.Test;
 
 @GatewayTest
 @DeployApi({ "/apis/v4/api.json", "/apis/v4/api-response.json" })
-public class RabbitMQConsumerPolicyIntegrationTest
-    extends AbstractPolicyTest<RabbitMQConsumerPolicy, RabbitMQConfiguration> {
+public class RabbitMQPublisherPolicyIntegrationTest
+    extends AbstractPolicyTest<RabbitMQPublisherPolicy, RabbitMQConfiguration> {
 
     @Override
     public void configureApi(Api api) {
