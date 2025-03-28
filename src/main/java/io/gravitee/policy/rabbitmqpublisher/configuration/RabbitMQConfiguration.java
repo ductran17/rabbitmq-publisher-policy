@@ -58,13 +58,12 @@ public class RabbitMQConfiguration implements PolicyConfiguration {
     private Boolean queueAutoDelete = true;
 
     @JsonProperty("Body")
-    private String body =
-        "{\n" +
-        "  \\\"properties\\\": {},\n" +
-        "  \\\"routing_key\\\": \\\"my_auto_delete_queue\\\",\n" +
-        "  \\\"payload\\\": \\\"OK ban i\\\",\n" +
-        "  \\\"payload_encoding\\\": \\\"string\\\"\n" +
-        "}";
+    private String body = "{\n" +
+            "  \\\"properties\\\": {},\n" +
+            "  \\\"routing_key\\\": \\\"my_auto_delete_queue\\\",\n" +
+            "  \\\"payload\\\": \\\"OK ban i\\\",\n" +
+            "  \\\"payload_encoding\\\": \\\"string\\\"\n" +
+            "}";
     // @JsonProperty("Scope")
     // private String scope = PolicyScope.REQUEST;
 }

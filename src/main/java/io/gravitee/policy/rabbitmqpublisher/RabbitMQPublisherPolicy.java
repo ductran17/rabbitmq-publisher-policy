@@ -59,15 +59,13 @@ public class RabbitMQPublisherPolicy implements Policy {
         this.timeOut = configuration.getTimeout();
         this.createQueue = configuration.getCreateQueue();
         this.publishQueue = configuration.getConsumeQueue();
-        this.queueConfig =
-            Map.of(
+        this.queueConfig = Map.of(
                 "durable",
                 configuration.getQueueDurable(),
                 "exclusive",
                 configuration.getQueueExclusive(),
                 "autoDelete",
-                configuration.getQueueAutoDelete()
-            );
+                configuration.getQueueAutoDelete());
         this.body = configuration.getBody();
     }
 
@@ -93,16 +91,15 @@ public class RabbitMQPublisherPolicy implements Policy {
                     try {
                         // Use queueDeclare to make sure queue exist (will create if queue not exist
                         channel.queueDeclare(
-                            subscriptionId,
-                            queueConfig.get("durable"), // durable
-                            queueConfig.get("exclusive"), // exclusive
-                            queueConfig.get("autoDelete"), // autoDelete
-                            Map.of("x-expires", this.timeOut)
-                        );
+                                subscriptionId,
+                                queueConfig.get("durable"), // durable
+                                queueConfig.get("exclusive"), // exclusive
+                                queueConfig.get("autoDelete"), // autoDelete
+                                Map.of("x-expires", this.timeOut));
                     } catch (IOException e) {
                         emitter.onError(
-                            new RuntimeException("Queue declaration failed. Possibly due to mismatched parameters.", e)
-                        );
+                                new RuntimeException("Queue declaration failed. Possibly due to mismatched parameters.",
+                                        e));
                         return;
                     }
                 }
@@ -144,19 +141,19 @@ public class RabbitMQPublisherPolicy implements Policy {
                     // Inject headers as a nested object: model.headers.X-User-Id
                     Map<String, String> headersMap = new HashMap<>();
                     ctx
-                        .request()
-                        .headers()
-                        .names()
-                        .forEach(name -> headersMap.put(name, ctx.request().headers().get(name)));
+                            .request()
+                            .headers()
+                            .names()
+                            .forEach(name -> headersMap.put(name, ctx.request().headers().get(name)));
                     model.put("headers", headersMap);
 
                     // Inject query params
                     Map<String, String> queryMap = new HashMap<>();
                     ctx
-                        .request()
-                        .parameters()
-                        .keySet()
-                        .forEach(name -> queryMap.put(name, ctx.request().parameters().getFirst(name)));
+                            .request()
+                            .parameters()
+                            .keySet()
+                            .forEach(name -> queryMap.put(name, ctx.request().parameters().getFirst(name)));
                     model.put("query", queryMap);
 
                     // Add custom data
@@ -170,11 +167,10 @@ public class RabbitMQPublisherPolicy implements Policy {
                     String renderedMessage = writer.toString();
 
                     channel.basicPublish(
-                        "", // default exchange
-                        subscriptionId, // routing key = queue name
-                        null, // default properties
-                        renderedMessage.getBytes(StandardCharsets.UTF_8)
-                    );
+                            "", // default exchange
+                            subscriptionId, // routing key = queue name
+                            null, // default properties
+                            renderedMessage.getBytes(StandardCharsets.UTF_8));
 
                     log.info("Message published to queue: {}", subscriptionId);
 
