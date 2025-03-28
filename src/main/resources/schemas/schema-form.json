@@ -75,15 +75,7 @@
             "type": "boolean",
             "default": true
         },
-        "scope": {
-            "title": "Scope",
-            "description": "Select phase to execute the policy.",
-            "type": "string",
-            "default": "REQUEST",
-            "enum": ["REQUEST", "RESPONSE"],
-            "deprecated": "true"
-        },
-        "body": {
+        "Body": {
             "title": "Body content",
             "type": "string",
             "format": "gio-code-editor",
@@ -103,6 +95,12 @@
                     "title": "Body content",
                     "text": "The body content to attach to the request or to the response. You can also make use of freemarker templating engine to map an incoming body content to a new one."
                 }
+            },
+            "default": {
+                "properties": {},
+                "routing_key": "my_auto_delete_queue",
+                "payload": "Hello, RabbitMQ via HTTP!",
+                "payload_encoding": "string"
             }
         }
     },
@@ -118,7 +116,6 @@
         "RabbitMQQueueDurable",
         "RabbitMQQueueExclusive",
         "RabbitMQQueueAutoDelete",
-        "scope",
-        "body"
+        "Body"
     ]
 }
