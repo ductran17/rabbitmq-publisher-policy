@@ -73,7 +73,7 @@ You can configure the policy with the following options:
 ^.^|string
 ^.^|"password"
 
-.^|RabbitMQ Timeout
+.^|RabbitMQ TimeToLive
 ^.^|X
 .^|Queue inactivity TTL (Delete this queue if it hasn’t been used for a given amount of time)
 ^.^|integer
