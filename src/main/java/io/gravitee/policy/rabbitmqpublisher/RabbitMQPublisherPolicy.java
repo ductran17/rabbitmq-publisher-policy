@@ -23,8 +23,12 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateExceptionHandler;
 import io.gravitee.gateway.reactive.api.context.HttpExecutionContext;
+import io.gravitee.gateway.reactive.api.el.EvaluableMessage;
+import io.gravitee.gateway.reactive.api.el.EvaluableRequest;
+import io.gravitee.gateway.reactive.api.el.EvaluableResponse;
 import io.gravitee.gateway.reactive.api.policy.Policy;
 import io.gravitee.policy.rabbitmqpublisher.configuration.RabbitMQConfiguration;
+import io.gravitee.policy.rabbitmqpublisher.utils.AttributesBasedExecutionContext;
 import io.reactivex.rxjava3.core.Completable;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -140,6 +144,8 @@ public class RabbitMQPublisherPolicy implements Policy {
                     Map<String, Object> model = new HashMap<>();
 
                     model.put("body", body);
+                    model.put("request", new EvaluableRequest(ctx.request()));
+                    model.put("context", new AttributesBasedExecutionContext(ctx));
 
                     // Inject headers as a nested object: model.headers.X-User-Id
                     Map<String, String> headersMap = new HashMap<>();
