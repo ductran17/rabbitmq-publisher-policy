@@ -81,8 +81,7 @@ public class RabbitMQPublisherPolicy implements Policy {
         return "rabbitmq-publisher-policy";
     }
 
-    @Override
-    public Completable onRequest(HttpExecutionContext ctx) {
+    private Completable publishMessageHttp(HttpExecutionContext ctx) {
         return Completable.create(emitter -> {
             String subscriptionId = ctx.getAttribute(this.attributeQueueID);
             if (subscriptionId == null) {
@@ -248,8 +247,13 @@ public class RabbitMQPublisherPolicy implements Policy {
     }
 
     @Override
+    public Completable onRequest(HttpExecutionContext ctx) {
+        return publishMessageHttp(ctx);
+    }
+
+    @Override
     public Completable onResponse(HttpExecutionContext ctx) {
-        return Completable.complete();
+        return publishMessageHttp(ctx);
     }
 
     // Simple method to check if the body looks like a Freemarker template
