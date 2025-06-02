@@ -75,6 +75,12 @@
             "type": "boolean",
             "default": true
         },
+        "RabbitMQQueueMessageJson": {
+            "title": "RabbitMQ Queue Message Json",
+            "description": "Choose to publish message as json or not (raw string)",
+            "type": "boolean",
+            "default": true
+        },
         "Body": {
             "title": "Body content",
             "type": "string",

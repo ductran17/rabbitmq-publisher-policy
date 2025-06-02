@@ -15,6 +15,7 @@
  */
 package io.gravitee.policy.rabbitmqpublisher;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -126,54 +127,105 @@ public class RabbitMQPublisherPolicy implements Policy {
                         return;
                     }
 
-                    // Determine if the body is a Freemarker template or a direct JSON
-                    String templateContent;
-                    if (isValidFreemarkerTemplate(body)) {
-                        templateContent = body;
-                    } else {
-                        // If it's a JSON, create a Freemarker template that renders the JSON
-                        templateContent = "${body?json_string}";
-                    }
-
-                    // 2. Load the string as a Freemarker template
-                    StringTemplateLoader loader = new StringTemplateLoader();
-                    loader.putTemplate("userTemplate", templateContent);
-                    cfg.setTemplateLoader(loader);
-
-                    // 3. Prepare data model (you can add more fields here)
+                    // 3. Prepare data model
                     Map<String, Object> model = new HashMap<>();
+                    String renderedMessage;
+                    ObjectMapper objectMapper = new ObjectMapper();
 
-                    model.put("body", body);
-                    model.put("request", new EvaluableRequest(ctx.request()));
-                    model.put("context", new AttributesBasedExecutionContext(ctx));
+                    if (configuration.getQueueMessageJson()) {
+                        // Parse the JSON body and render it directly using ObjectMapper
+                        try {
+                            Object bodyObject = objectMapper.readValue(body, Object.class);
 
-                    // Inject headers as a nested object: model.headers.X-User-Id
-                    Map<String, String> headersMap = new HashMap<>();
-                    ctx
-                        .request()
-                        .headers()
-                        .names()
-                        .forEach(name -> headersMap.put(name, ctx.request().headers().get(name)));
-                    model.put("headers", headersMap);
+                            // Create a simple template that allows FreeMarker processing of the JSON
+                            String templateContent = body; // Use the original JSON as template
 
-                    // Inject query params
-                    Map<String, String> queryMap = new HashMap<>();
-                    ctx
-                        .request()
-                        .parameters()
-                        .keySet()
-                        .forEach(name -> queryMap.put(name, ctx.request().parameters().getFirst(name)));
-                    model.put("query", queryMap);
+                            // If the body contains FreeMarker expressions, process them
+                            if (isValidFreemarkerTemplate(body)) {
+                                StringTemplateLoader loader = new StringTemplateLoader();
+                                loader.putTemplate("userTemplate", templateContent);
+                                cfg.setTemplateLoader(loader);
 
-                    // Add custom data
-                    // model.put("subscriptionId", subscriptionId);
-                    // model.put("timestamp", System.currentTimeMillis());
+                                // Add context variables for template processing
+                                model.put("request", new EvaluableRequest(ctx.request()));
+                                model.put("context", new AttributesBasedExecutionContext(ctx));
 
-                    // 4. Render the template
-                    Template template = cfg.getTemplate("userTemplate");
-                    StringWriter writer = new StringWriter();
-                    template.process(model, writer);
-                    String renderedMessage = writer.toString();
+                                // Inject headers as a nested object
+                                Map<String, String> headersMap = new HashMap<>();
+                                ctx
+                                    .request()
+                                    .headers()
+                                    .names()
+                                    .forEach(name -> headersMap.put(name, ctx.request().headers().get(name)));
+                                model.put("headers", headersMap);
+
+                                // Inject query params
+                                Map<String, String> queryMap = new HashMap<>();
+                                ctx
+                                    .request()
+                                    .parameters()
+                                    .keySet()
+                                    .forEach(name -> queryMap.put(name, ctx.request().parameters().getFirst(name)));
+                                model.put("query", queryMap);
+
+                                // Render the template
+                                Template template = cfg.getTemplate("userTemplate");
+                                StringWriter writer = new StringWriter();
+                                template.process(model, writer);
+                                renderedMessage = writer.toString();
+                            } else {
+                                // If no FreeMarker expressions, use the JSON as-is
+                                renderedMessage = objectMapper.writeValueAsString(bodyObject);
+                            }
+                        } catch (Exception e) {
+                            log.error("Failed to process JSON body", e);
+                            emitter.onError(new RuntimeException("Failed to process JSON body", e));
+                            return;
+                        }
+                    } else {
+                        // Handle as string template
+                        String templateContent;
+
+                        if (isValidFreemarkerTemplate(body)) {
+                            templateContent = body;
+                        } else {
+                            // Wrap non-template content in quotes to make it a valid string
+                            templateContent = "\"" + body.replace("\"", "\\\"") + "\"";
+                        }
+
+                        StringTemplateLoader loader = new StringTemplateLoader();
+                        loader.putTemplate("userTemplate", templateContent);
+                        cfg.setTemplateLoader(loader);
+
+                        // Add context variables
+                        model.put("body", body);
+                        model.put("request", new EvaluableRequest(ctx.request()));
+                        model.put("context", new AttributesBasedExecutionContext(ctx));
+
+                        // Inject headers
+                        Map<String, String> headersMap = new HashMap<>();
+                        ctx
+                            .request()
+                            .headers()
+                            .names()
+                            .forEach(name -> headersMap.put(name, ctx.request().headers().get(name)));
+                        model.put("headers", headersMap);
+
+                        // Inject query params
+                        Map<String, String> queryMap = new HashMap<>();
+                        ctx
+                            .request()
+                            .parameters()
+                            .keySet()
+                            .forEach(name -> queryMap.put(name, ctx.request().parameters().getFirst(name)));
+                        model.put("query", queryMap);
+
+                        // Render the template
+                        Template template = cfg.getTemplate("userTemplate");
+                        StringWriter writer = new StringWriter();
+                        template.process(model, writer);
+                        renderedMessage = writer.toString();
+                    }
 
                     channel.basicPublish(
                         "", // default exchange
